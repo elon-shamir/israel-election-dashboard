@@ -277,16 +277,19 @@ async function mapLimit(items, limit, fn) {
 
 const HISTORY_STEP_MIN = 240;
 
-// The projection recomputed every 4 hours from each bracket's price history, with projectSeats itself.
+// The projection recomputed every stepMin minutes (4 hours by default) from each bracket's price history,
+// with projectSeats itself; `since` (unix seconds) limits it to a recent window, e.g. hourly for a day.
 // Polymarket publishes no history of liquidity or spreads, so the blend and the fit to 120 use today's
 // liquidity throughout. A market counts from when all its brackets have a price; the series starts once
 // every party has at least one, so no party drops out and hands its seats to the rest.
-async function projectionHistory(events) {
+async function projectionHistory(events, { stepMin = HISTORY_STEP_MIN, since = null } = {}) {
   const used = events.filter((e) => e.kind === "buckets" &&
     (SEATS_RE.test(e.title) || SHARE_RE.test(e.title) || e.title.toLowerCase().includes("below threshold")));
   const tokens = used.flatMap((e) => e.markets.map((m) => m.tokenYes));
   const series = new Map(await mapLimit(tokens, 8, async (token) => {
-    const data = await getJson(`${CLOB}/prices-history`, { market: token, interval: "max", fidelity: HISTORY_STEP_MIN })
+    // a window reaches back two extra days, so a bracket that did not trade inside it still has a price
+    const range = since ? { startTs: Math.floor(since - 2 * 86400), endTs: Math.ceil(Date.now() / 1000) } : { interval: "max" };
+    const data = await getJson(`${CLOB}/prices-history`, { market: token, ...range, fidelity: stepMin })
       .catch(() => ({ history: [] }));
     return [token, (data.history || []).map((p) => ({ t: Number(p.t), p: Number(p.p) })).sort((a, b) => a.t - b.t)];
   }));
@@ -301,7 +304,7 @@ async function projectionHistory(events) {
   const start = Math.max(...Object.values(partyOpens));
   if (!Number.isFinite(start)) return { start: null, points: [] };
 
-  const step = HISTORY_STEP_MIN * 60, now = Date.now() / 1000;
+  const step = stepMin * 60, now = Date.now() / 1000;
   const cursor = new Map(tokens.map((t) => [t, { i: 0, p: null }]));
   const priceAt = (token, t) => {
     const h = series.get(token), c = cursor.get(token);
@@ -309,7 +312,7 @@ async function projectionHistory(events) {
     return c.p;
   };
   const points = [];
-  for (let t = Math.ceil(start / step) * step; t <= now; t += step) {
+  for (let t = Math.ceil(Math.max(start, since ?? -Infinity) / step) * step; t <= now; t += step) {
     const snapshot = used.filter((e) => opens.get(e) <= t).map((e) => ({
       ...e, markets: e.markets.map((m) => ({ ...m, price: priceAt(m.tokenYes, t) })),
     }));

@@ -192,7 +192,8 @@ a { color: inherit; }
         <div class="controls">
           <select id="histWhat" aria-label="What to chart"><option value="">Netanyahu vs opposition</option></select>
           <div class="ranges" id="histRanges">
-            <button data-d="7">1W</button><button data-d="14">2W</button><button data-d="0" aria-pressed="true">All</button>
+            <button data-d="1">1D</button><button data-d="7">1W</button><button data-d="14">2W</button>
+            <button data-d="0" aria-pressed="true">All</button>
           </div>
         </div>
       </div>
@@ -617,7 +618,7 @@ const endLabels = {
   },
 };
 
-const hist = { data: null, loading: false, days: 0, what: "" };
+const hist = { data: null, hourly: null, loading: false, loadingHourly: false, days: 0, what: "" };
 let histChart;
 
 async function loadHistory() {
@@ -630,6 +631,21 @@ async function loadHistory() {
     $("histNote").textContent = `Could not load price history: ${err.message}`;
   } finally {
     hist.loading = false;
+  }
+}
+
+// the last day at hourly resolution, fetched the first time someone picks 1D
+async function loadHourly() {
+  if (hist.loadingHourly || hist.hourly) return;
+  hist.loadingHourly = true;
+  $("histNote").textContent = "Loading hourly price history…";
+  try {
+    hist.hourly = await projectionHistory(state.events.filter((e) => !e.closed), { stepMin: 60, since: Date.now() / 1000 - 86400 });
+    renderHistory();
+  } catch (err) {
+    $("histNote").textContent = `Could not load hourly price history: ${err.message}`;
+  } finally {
+    hist.loadingHourly = false;
   }
 }
 
@@ -647,7 +663,9 @@ const majorityLine = {
 };
 
 function renderHistory() {
-  const h = hist.data, pr = state.projection;
+  const hourly = hist.days === 1;
+  if (hourly && !hist.hourly) return loadHourly();
+  const h = hourly ? hist.hourly : hist.data, pr = state.projection;
   if (!h || !pr || $("tab-markets").hidden) return;
   const sel = $("histWhat");
   if (sel.options.length === 1) {
@@ -714,7 +732,10 @@ function renderHistory() {
   });
 
   const firstBelow = h.points.find((p) => p.belowKnown);
-  $("histNote").textContent = `The same projection recomputed every 4 hours from each market's price history, since ` +
+  $("histNote").textContent = hourly
+    ? `The same projection recomputed every hour over the last 24 hours from each market's price history. Polymarket ` +
+      `publishes no history of liquidity or spreads, so the blend and the fit to 120 use today's liquidity.`
+    : `The same projection recomputed every 4 hours from each market's price history, since ` +
     `${date(new Date(h.start * 1000).toISOString())}, when every party first had a market. Polymarket publishes no history of ` +
     `liquidity or spreads, so the blend and the fit to 120 use today's liquidity throughout` +
     (firstBelow ? `; before ${date(new Date(firstBelow.t * 1000).toISOString())} the wasted vote is taken as 5%, as there was no market for it.` : ".");

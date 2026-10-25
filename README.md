@@ -21,7 +21,8 @@ python3 polymarket.py --out data/snapshot.json --closed --history 1w   # optiona
   seats / liquidity). A party is flagged low-confidence when over half its odds rest on last-trade
   prices. Blocs follow Polymarket's own definitions.
 - Projection history (`projectionHistory` in `polymarket.js`): `projectSeats` rerun every 4 hours on
-  each bracket's CLOB price history, from when every party first had a market. Liquidity and spread
+  each bracket's CLOB price history, from when every party first had a market, or hourly over the last
+  24 hours (fetched on first use of 1D, reaching back two extra days so quiet brackets have a price). Liquidity and spread
   history are not published, so weights use today's liquidity; before the wasted-vote market opened the
   default 5% applies.
 - `index.html`, Polymarket tab: headline tiles, the projected Knesset by bloc with its history, any market's outcomes
