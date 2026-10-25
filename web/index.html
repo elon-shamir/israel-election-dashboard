@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Israel Election Odds</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="polymarket.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --wash: rgba(11,11,11,0.04);
+  --bar: #2a78d6;
+  --bar-track: #f0efec;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --live: #0ca30c;
+  --critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+    --bar: #3987e5; --bar-track: #262624;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+  --bar: #3987e5; --bar-track: #262624;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+h1 { font-size: 22px; margin: 0 0 2px; letter-spacing: -0.01em; }
+h2 { font-size: 15px; margin: 0; }
+.sub, .meta { color: var(--ink-2); font-size: 13px; }
+.copy { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.status { display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px; flex-wrap: wrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live); display: inline-block; margin-right: 6px; }
+.dot.err { background: var(--critical); }
+button, select, input[type=search] {
+  font: inherit; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+}
+button { cursor: pointer; }
+button:hover { background: var(--wash); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile { cursor: pointer; }
+.tile:hover { background: var(--wash); }
+.tile .k { color: var(--ink-2); font-size: 13px; }
+.tile .v { font-size: 30px; font-weight: 600; margin: 4px 0 0; letter-spacing: -0.02em; }
+.tile .d { color: var(--ink-2); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feature { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; margin-bottom: 16px; }
+@media (max-width: 860px) { .feature { grid-template-columns: 1fr; } }
+.feature-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.feature-head select { max-width: 100%; }
+.bars { display: flex; flex-direction: column; gap: 2px; max-height: 470px; overflow-y: auto; }
+.bar-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) 54px; column-gap: 8px; row-gap: 3px; align-items: center;
+  padding: 5px 6px; border-radius: 6px; cursor: pointer; }
+.bar-row:hover { background: var(--wash); }
+.bar-row .sw { grid-area: 1 / 1; width: 10px; height: 10px; border-radius: 3px; border: 1px solid var(--axis); }
+.bar-row .lab { grid-area: 1 / 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-row .pct { grid-area: 1 / 3; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.bar-row .track { grid-area: 2 / 2 / 3 / 4; height: 6px; background: var(--bar-track); border-radius: 3px; overflow: hidden; }
+.bar-row .fill { display: block; height: 100%; background: var(--bar); border-radius: 0 3px 3px 0; }
+.bar-row .chg { grid-area: 3 / 2 / 4 / 4; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+.ranges { display: flex; gap: 4px; }
+.ranges button[aria-pressed=true] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chart-box { position: relative; height: 420px; }
+.section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 28px 0 12px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips button[aria-pressed=true] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.mini { cursor: pointer; }
+.mini:hover { background: var(--wash); }
+.mini h3 { font-size: 14px; margin: 0 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini .meta { margin-bottom: 10px; }
+.cols { display: flex; align-items: flex-end; gap: 2px; height: 90px; border-bottom: 1px solid var(--axis); }
+.cols .c { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; position: relative; }
+.cols .c .f { background: var(--bar); border-radius: 4px 4px 0 0; min-height: 1px; }
+.cols .c.top .f { background: var(--s2); }
+.cols .c .n { font-size: 11px; color: var(--ink-2); text-align: center; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+.ticks { display: flex; gap: 2px; margin-top: 4px; }
+.ticks span { flex: 1; text-align: center; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.proj { margin-bottom: 16px; }
+.proj-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; margin-bottom: 14px; }
+.blocbar { position: relative; display: flex; gap: 2px; height: 28px; margin: 26px 0 6px; }
+.blocbar .seg { height: 100%; min-width: 2px; }
+.blocbar .seg:first-child { border-radius: 4px 0 0 4px; }
+.blocbar .seg:last-child { border-radius: 0 4px 4px 0; }
+.blocbar .seg-lab { position: absolute; top: -20px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.blocbar .maj { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+.blocbar .maj-lab { position: absolute; bottom: -22px; transform: translateX(-50%); font-size: 12px; color: var(--ink); white-space: nowrap; }
+.bloc-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; margin-top: 34px; }
+.bloc-cols h3 { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0 0 6px; }
+.bloc-cols h3 .sw { width: 10px; height: 10px; border-radius: 3px; }
+.bloc-cols h3 .tot { margin-left: auto; font-variant-numeric: tabular-nums; }
+.prow { display: grid; grid-template-columns: minmax(0, 1fr) 40px; column-gap: 8px; row-gap: 2px; padding: 5px 6px;
+  border-radius: 6px; cursor: pointer; }
+.prow:hover { background: var(--wash); }
+.prow .lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prow .val { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.prow .track { grid-column: 1 / 3; height: 6px; background: var(--bar-track); border-radius: 3px; overflow: hidden; }
+.prow .fill { display: block; height: 100%; border-radius: 0 3px 3px 0; }
+.prow .note { grid-column: 1 / 3; color: var(--muted); font-size: 12px; }
+.odds { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--ink-2); font-size: 13px; }
+.odds b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.tabs { display: flex; gap: 4px; margin: -4px 0 20px; border-bottom: 1px solid var(--grid); }
+.tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 8px 12px; color: var(--ink-2); }
+.tabs button[aria-selected=true] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 4px; }
+.seg-ctl { display: inline-flex; gap: 4px; }
+.seg-ctl button[aria-pressed=true] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+tr.used td:first-child { box-shadow: inset 3px 0 var(--ink); }
+tr.dim td { color: var(--muted); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th { color: var(--ink-2); font-weight: 500; font-size: 12px; cursor: pointer; user-select: none; }
+th.num, td.num { text-align: right; }
+td.title { white-space: normal; min-width: 240px; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--wash); }
+.resolved { color: var(--muted); font-size: 12px; margin-left: 6px; }
+a { color: inherit; }
+.err-box { color: var(--critical); margin: 8px 0; }
+.empty { color: var(--muted); padding: 40px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Israeli Election Odds</h1>
+      <div class="sub">Live Polymarket odds and the final polls</div>
+      <div class="copy">© 2026 Elon Shamir</div>
+    </div>
+    <div class="status">
+      <span id="status"><span class="dot"></span>Loading…</span>
+      <label><input type="checkbox" id="auto" checked> Auto-refresh</label>
+      <label><input type="checkbox" id="showClosed"> Include resolved</label>
+      <button id="refresh">Refresh now</button>
+    </div>
+  </header>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="markets" aria-selected="true">Polymarket</button>
+    <button role="tab" data-tab="polls" aria-selected="false">Polls</button>
+  </nav>
+  <div id="error" class="err-box" hidden></div>
+
+  <main id="tab-markets">
+
+  <section class="tiles" id="tiles"></section>
+
+  <section class="card proj" id="proj" hidden>
+    <div class="proj-head">
+      <div>
+        <h2>Projected Knesset</h2>
+        <div class="meta" id="projMeta"></div>
+      </div>
+      <div class="odds" id="projOdds"></div>
+    </div>
+    <div class="blocbar" id="blocbar" role="img"></div>
+    <div class="bloc-cols" id="blocCols"></div>
+  </section>
+
+  <section class="feature">
+    <div class="card">
+      <div class="feature-head">
+        <select id="eventSelect" aria-label="Market"></select>
+      </div>
+      <h2 id="featTitle"></h2>
+      <div class="meta" id="featMeta" style="margin-bottom:12px"></div>
+      <div class="bars" id="bars"></div>
+      <div class="hint">Click an outcome to add or remove it from the chart (up to 4).</div>
+    </div>
+    <div class="card">
+      <div class="feature-head">
+        <h2>Probability over time</h2>
+        <div class="ranges" id="ranges">
+          <button data-r="1d">1D</button><button data-r="1w">1W</button>
+          <button data-r="1m" aria-pressed="true">1M</button><button data-r="max">All</button>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="chart" role="img" aria-label="Probability history"></canvas></div>
+    </div>
+  </section>
+
+  <div class="section-head">
+    <h2>Distributions</h2>
+    <div class="chips" id="distChips">
+      <button data-f="seats" aria-pressed="true">Seats</button>
+      <button data-f="share">Vote share</button>
+      <button data-f="other">Other ranges</button>
+    </div>
+  </div>
+  <section class="grid" id="dists"></section>
+
+  <div class="section-head">
+    <h2>All markets <span class="meta" id="count"></span></h2>
+    <input type="search" id="search" placeholder="Filter markets…" aria-label="Filter markets">
+  </div>
+  <section class="card table-wrap">
+    <table>
+      <thead><tr>
+        <th data-k="title">Market</th>
+        <th data-k="lead">Leading outcome</th>
+        <th data-k="price" class="num">Prob.</th>
+        <th data-k="change" class="num">24h Δ</th>
+        <th data-k="volume24h" class="num">24h volume</th>
+        <th data-k="volume" class="num">Total volume</th>
+        <th data-k="endDate" class="num">Closes</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+  <p class="meta">Data: Polymarket Gamma &amp; CLOB public APIs. Probabilities are the order-book midpoint (or last trade when the spread exceeds 10¢), the same rule polymarket.com uses.</p>
+  </main>
+
+  <main id="tab-polls" hidden>
+    <section class="card proj">
+      <div class="proj-head">
+        <div>
+          <h2 id="pollTitle">Polls</h2>
+          <div class="meta" id="pollMeta"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="seg-ctl" id="pollMode">
+          <button data-m="latest">Latest from each outlet</button>
+          <button data-m="avg" aria-pressed="true">Average</button>
+        </div>
+        <label id="pollNWrap">of the last
+          <select id="pollN">
+            <option>3</option><option>5</option><option selected>10</option><option>15</option><option>20</option><option value="0">all</option>
+          </select> polls</label>
+        <label>Weighting
+          <select id="pollWeight">
+            <option value="equal">Equal</option>
+            <option value="weighted" selected>Recency + sample size</option>
+          </select></label>
+        <label><input type="checkbox" id="poll1424"> Include Channel 14 &amp; i24</label>
+      </div>
+      <div class="blocbar" id="pollBar" role="img"></div>
+      <div class="bloc-cols" id="pollCols"></div>
+    </section>
+    <div class="section-head">
+      <h2>Every poll since the final lists <span class="meta" id="pollCount"></span></h2>
+    </div>
+    <section class="card table-wrap">
+      <table id="pollTable"></table>
+    </section>
+    <p class="meta" id="pollSource"></p>
+  </main>
+</div>
+
+<script>
+const REFRESH_MS = 30_000;
+const PM_SLUG = "who-will-be-the-next-prime-minister-of-israel-after-the-next-election";
+const MAX_LINES = 4;
+
+const state = {
+  events: [],
+  fetchedAt: null,
+  featured: PM_SLUG,
+  range: "1m",
+  dist: "seats",
+  sort: { k: "volume", dir: -1 },
+  query: "",
+  selected: {},   // event slug -> [market ids charted]
+  colors: {},     // event slug -> {market id: slot}, so a colour follows its outcome across refreshes
+};
+let chart, timer;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function pct(p) {
+  if (p == null) return "–";
+  const v = p * 100;
+  if (v > 0 && v < 1) return "<1%";
+  if (v > 99 && v < 100) return ">99%";
+  return (v >= 10 || v === 0 ? v.toFixed(0) : v.toFixed(1)) + "%";
+}
+function delta(c) {
+  if (!c) return "–";
+  const pts = c * 100;
+  return (pts > 0 ? "▲ +" : "▼ −") + Math.abs(pts).toFixed(1) + " pts";
+}
+function money(v) {
+  if (!v) return "$0";
+  if (v >= 1e6) return "$" + (v / 1e6).toFixed(1) + "M";
+  if (v >= 1e3) return "$" + (v / 1e3).toFixed(0) + "K";
+  return "$" + v.toFixed(0);
+}
+function date(iso) {
+  return iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "–";
+}
+const eventBySlug = (slug) => state.events.find((e) => e.slug === slug || e.slug.startsWith(slug));
+const lead = (e) => (e.kind === "buckets" ? [...e.markets].sort((a, b) => b.price - a.price)[0] : e.markets[0]);
+// a standalone yes/no market has no outcome name, only its question
+const outcomeName = (m) => (m.label === m.question ? m.outcomes?.[0] || "Yes" : m.label);
+const shortTitle = (t) => t.replace(/^Israel(i)? (Legislative )?Election:\s*/i, "").replace(/\?$/, "");
+
+function colorSlot(e, id) {
+  const map = (state.colors[e.slug] ||= {});
+  if (!(id in map)) {
+    const used = new Set(Object.values(map));
+    let slot = 1;
+    while (used.has(slot) && slot <= 8) slot++;
+    map[id] = slot;
+  }
+  return map[id] <= 8 ? css(`--s${map[id]}`) : css("--muted");
+}
+
+async function load() {
+  try {
+    const body = await fetchEvents($("showClosed").checked);
+    state.events = body.events;
+    state.projection = body.projection;
+    state.fetchedAt = new Date(body.fetchedAt);
+    $("error").hidden = true;
+    $("status").innerHTML = `<span class="dot"></span>Updated ${state.fetchedAt.toLocaleTimeString()}`;
+    render();
+  } catch (err) {
+    $("error").hidden = false;
+    $("error").textContent = `Could not load Polymarket data: ${err.message}`;
+    $("status").innerHTML = `<span class="dot err"></span>Refresh failed`;
+  }
+}
+
+function render() {
+  renderTiles();
+  renderProjection();
+  renderSelect();
+  renderFeature();
+  renderDists();
+  renderTable();
+  renderPolls();
+}
+
+function renderTiles() {
+  const tiles = [];
+  const pm = eventBySlug(PM_SLUG);
+  if (pm) tiles.push({ slug: pm.slug, k: "Next prime minister, favourite", v: pct(pm.markets[0].price), d: pm.markets[0].label });
+  const win = eventBySlug("israeli-legislative-election-winner");
+  if (win) tiles.push({ slug: win.slug, k: "Most seats, favourite", v: pct(win.markets[0].price), d: win.markets[0].label });
+  const coal = eventBySlug("israel-election-any-coalition-wins-a-majority");
+  if (coal) tiles.push({ slug: coal.slug, k: "Any coalition wins a majority", v: pct(coal.markets[0].price), d: "Yes" });
+  const sched = eventBySlug("will-israel-election-happen-as-scheduled");
+  if (sched) tiles.push({ slug: sched.slug, k: "Election happens as scheduled", v: pct(sched.markets[0].price), d: "Yes" });
+  const vol = state.events.reduce((s, e) => s + e.volume24h, 0);
+  const n = state.events.reduce((s, e) => s + e.markets.length, 0);
+  tiles.push({ k: "Traded in the last 24h", v: money(vol), d: `${state.events.length} events · ${n} outcomes` });
+  $("tiles").innerHTML = tiles.map((t) => `
+    <div class="card tile" ${t.slug ? `data-slug="${esc(t.slug)}" title="Show this market"` : ""}>
+      <div class="k">${esc(t.k)}</div><div class="v">${esc(t.v)}</div><div class="d">${esc(t.d)}</div>
+    </div>`).join("");
+}
+
+const BLOC_COLOR = { "Netanyahu bloc": "--s1", "Opposition bloc": "--s2" };
+const blocColor = (name) => css(BLOC_COLOR[name] || "--axis");
+const seats = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+
+function renderProjection() {
+  const pr = state.projection;
+  $("proj").hidden = !pr;
+  if (!pr) return;
+  const gap = pr.rawTotal - pr.knesset;
+  $("projMeta").textContent = `Expected seats from each party's seat and vote-share markets, averaged by liquidity. ` +
+    (Math.abs(gap) >= 0.5 ? `The markets add up to ${pr.rawTotal.toFixed(0)}; the ${Math.abs(gap).toFixed(0)}-seat gap is taken mostly from thin markets. ` : "") +
+    `Blocs as Polymarket defines them.`;
+  const odds = [];
+  if (pr.markets.netanyahuBlocBigger != null)
+    odds.push(`Netanyahu bloc bigger <b>${pct(pr.markets.netanyahuBlocBigger)}</b>`);
+  if (pr.markets.anyBlocMajority != null) odds.push(`Either bloc reaches ${pr.majority} <b>${pct(pr.markets.anyBlocMajority)}</b>`);
+  $("projOdds").innerHTML = odds.map((o) => `<span>${o}</span>`).join("");
+
+  drawKnesset($("blocbar"), $("blocCols"), pr.blocs, pr.parties, pr, (p) => {
+    const notes = [`most likely ${p.likely.label} (${pct(p.likely.p)})`];
+    if (p.pIn < 0.95) notes.push(`${pct(p.pIn)} to pass the threshold`);
+    if (p.source === "share") notes.push("vote-share market only");
+    if (p.stale > 0.5) notes.push(`low confidence (${pct(p.stale)} on last-trade prices)`);
+    const parts = [];
+    if (p.seatsFromSeats != null) parts.push(`seat market ${seats(p.seatsFromSeats)} (${pct(p.weights.seats)} weight)`);
+    if (p.seatsFromShare != null) parts.push(`vote-share market ${seats(p.seatsFromShare)} (${pct(p.weights.share)} weight)`);
+    const tip = `${p.name}: ${seats(p.seats)} seats · ${parts.join(" + ")} = ${seats(p.seatsRaw)} before fitting to ${pr.knesset} · ${money(p.liquidity)} liquidity`;
+    return { note: notes.join(" · "), tip, slug: p.slug };
+  });
+}
+
+// the bloc bar plus one column of party bars per bloc; describe(party) -> {note, tip, slug?}
+function drawKnesset(bar, cols, blocs, parties, { knesset, majority }, describe) {
+  // the two blocs push in from either end, so whichever crosses the middle line has 61
+  const order = [blocs[0], ...blocs.slice(2), blocs[1]];
+  let at = 0;
+  const segs = order.map((b, i) => {
+    const mid = ((at + b.seats / 2) / knesset) * 100;
+    at += b.seats;
+    const pos = i === 0 ? "left:0" : i === order.length - 1 ? "right:0" : `left:${mid}%;transform:translateX(-50%)`;
+    return `<div class="seg" style="flex:${b.seats};background:${blocColor(b.name)}" title="${esc(b.name)}: ${seats(b.seats)} seats"></div>
+      <span class="seg-lab" data-seats="${b.seats}" style="${pos}">${esc(b.name.replace(" bloc", ""))} ${seats(b.seats)}</span>`;
+  });
+  bar.innerHTML = segs.join("") +
+    `<span class="maj" style="left:calc(50% - 1px)"></span><span class="maj-lab" style="left:50%">${majority} to govern</span>`;
+  bar.setAttribute("aria-label", blocs.map((b) => `${b.name} ${seats(b.seats)} seats`).join(", "));
+  // on narrow screens drop the smaller of two colliding labels; the columns below repeat every number
+  const labs = [...bar.querySelectorAll(".seg-lab")];
+  for (let i = 1; i < labs.length; i++) {
+    const a = labs[i - 1], b = labs[i];
+    if (a.hidden || b.hidden) continue;
+    if (a.getBoundingClientRect().right + 8 > b.getBoundingClientRect().left) {
+      (Number(a.dataset.seats) < Number(b.dataset.seats) ? a : b).hidden = true;
+    }
+  }
+
+  const max = Math.max(...parties.map((p) => p.seats), 1);
+  cols.innerHTML = blocs.map((b) => `
+    <div>
+      <h3><span class="sw" style="background:${blocColor(b.name)}"></span>${esc(b.name)}<span class="tot">${seats(b.seats)}</span></h3>
+      ${parties.filter((p) => p.bloc === b.name).map((p) => {
+        const d = describe(p);
+        return `<div class="prow" ${d.slug ? `data-slug="${esc(d.slug)}"` : ""} title="${esc(d.tip)}">
+          <span class="lab">${esc(p.name)}</span><span class="val">${seats(p.seats)}</span>
+          <span class="track"><span class="fill" style="width:${(p.seats / max) * 100}%;background:${blocColor(b.name)}"></span></span>
+          <span class="note">${esc(d.note)}</span>
+        </div>`;
+      }).join("")}
+    </div>`).join("");
+}
+
+function renderSelect() {
+  const sel = $("eventSelect");
+  sel.innerHTML = state.events.map((e) =>
+    `<option value="${esc(e.slug)}">${esc(e.title)}${e.closed ? " (resolved)" : ""}</option>`).join("");
+  if (!eventBySlug(state.featured) && state.events[0]) state.featured = state.events[0].slug;
+  sel.value = eventBySlug(state.featured)?.slug ?? "";
+}
+
+function selectedIds(e) {
+  const live = new Set(e.markets.map((m) => m.id));
+  let ids = (state.selected[e.slug] || []).filter((id) => live.has(id));
+  if (!ids.length) ids = [...e.markets].sort((a, b) => b.price - a.price).slice(0, MAX_LINES).map((m) => m.id);
+  state.selected[e.slug] = ids;
+  return ids;
+}
+
+function renderFeature() {
+  const e = eventBySlug(state.featured);
+  if (!e) return;
+  const ids = selectedIds(e);
+  ids.forEach((id) => colorSlot(e, id));
+  $("featTitle").innerHTML = `<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.title)}</a>`;
+  $("featMeta").textContent = `${money(e.volume)} traded · ${money(e.liquidity)} liquidity · closes ${date(e.endDate)}`;
+  $("bars").innerHTML = e.markets.map((m) => {
+    const on = ids.includes(m.id);
+    const sw = on ? `background:${colorSlot(e, m.id)};border-color:transparent` : "";
+    const quote = m.bestBid != null ? ` · bid ${pct(m.bestBid)} / ask ${pct(m.bestAsk)}` : "";
+    return `<div class="bar-row" data-id="${esc(m.id)}" role="button" aria-pressed="${on}"
+        title="${esc(m.question)}${quote} · ${money(m.volume)} volume">
+      <span class="sw" style="${sw}"></span>
+      <span class="lab">${esc(outcomeName(m))}${m.closed ? '<span class="resolved">resolved</span>' : ""}</span>
+      <span class="pct">${pct(m.price)}</span>
+      <span class="track"><span class="fill" style="width:${(m.price * 100).toFixed(2)}%"></span></span>
+      <span class="chg">${delta(m.change1d)} 24h</span>
+    </div>`;
+  }).join("");
+  renderChart(e);
+}
+
+let chartToken = 0;
+async function renderChart(e) {
+  const token = ++chartToken;
+  const ms = state.selected[e.slug].map((id) => e.markets.find((m) => m.id === id)).filter(Boolean);
+  let histories;
+  try {
+    histories = await Promise.all(ms.map((m) =>
+      fetchHistory(m.tokenYes, state.range).catch(() => [])));
+  } catch (err) {
+    histories = ms.map(() => []);
+  }
+  if (token !== chartToken) return;
+
+  // series come back on slightly different timestamps; carry each forward onto one shared grid
+  const times = [...new Set(histories.flatMap((h) => (Array.isArray(h) ? h.map((p) => p.t) : [])))].sort((a, b) => a - b);
+  const datasets = ms.map((m, i) => {
+    const h = Array.isArray(histories[i]) ? histories[i] : [];
+    let j = 0, last = null;
+    const data = times.map((t) => {
+      while (j < h.length && h[j].t <= t) last = h[j++].p;
+      return { x: t * 1000, y: last == null ? null : last * 100 };
+    });
+    if (!e.closed && data.length) data[data.length - 1] = { x: data[data.length - 1].x, y: m.price * 100 };
+    const c = colorSlot(e, m.id);
+    return { label: m.label, data, borderColor: c, backgroundColor: c, borderWidth: 2, pointRadius: 0,
+      pointHoverRadius: 5, pointHoverBorderWidth: 2, pointHoverBorderColor: css("--surface"), tension: 0, spanGaps: true };
+  });
+
+  const spanDays = times.length ? (times[times.length - 1] - times[0]) / 86400 : 1;
+  const tickFmt = (v) => new Date(v).toLocaleString(undefined, spanDays <= 2 ? { hour: "numeric", minute: "2-digit" } : { month: "short", day: "numeric" });
+  const ink2 = css("--ink-2"), muted = css("--muted"), grid = css("--grid");
+
+  if (chart) chart.destroy();
+  chart = new Chart($("chart"), {
+    type: "line",
+    data: { datasets },
+    options: {
+      maintainAspectRatio: false,
+      animation: false,
+      parsing: false,
+      normalized: true,
+      layout: { padding: { right: 150, top: 6 } },
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: { type: "linear", grid: { display: false }, border: { color: css("--axis") },
+          ticks: { color: muted, maxTicksLimit: 7, callback: tickFmt, maxRotation: 0 } },
+        y: { min: 0, suggestedMax: 10, grid: { color: grid }, border: { display: false },
+          ticks: { color: muted, callback: (v) => v + "%", maxTicksLimit: 6 } },
+      },
+      plugins: {
+        legend: { position: "top", align: "start",
+          labels: { color: ink2, usePointStyle: true, pointStyle: "line", boxWidth: 18, font: { size: 12 } } },
+        tooltip: {
+          backgroundColor: css("--surface"), titleColor: css("--ink"), bodyColor: ink2,
+          borderColor: css("--border"), borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
+          itemSort: (a, b) => b.parsed.y - a.parsed.y,
+          callbacks: {
+            title: (items) => new Date(items[0].parsed.x).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+            label: (c) => ` ${c.dataset.label}: ${c.parsed.y == null ? "–" : c.parsed.y.toFixed(1) + "%"}`,
+          },
+        },
+      },
+    },
+    plugins: [crosshair, endLabels],
+  });
+  if (!times.length) {
+    const ctx = chart.ctx;
+    ctx.save(); ctx.fillStyle = muted; ctx.textAlign = "center";
+    ctx.fillText("No trades in this range", chart.width / 2, chart.height / 2); ctx.restore();
+  }
+}
+
+const crosshair = {
+  id: "crosshair",
+  afterDraw(c) {
+    const a = c.tooltip?.getActiveElements?.();
+    if (!a?.length) return;
+    const x = a[0].element.x, { top, bottom } = c.chartArea, ctx = c.ctx;
+    ctx.save(); ctx.strokeStyle = css("--axis"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); ctx.restore();
+  },
+};
+
+// direct labels at each line's end, nudged apart so they never overlap
+const endLabels = {
+  id: "endLabels",
+  afterDatasetsDraw(c) {
+    const ctx = c.ctx, items = [];
+    c.data.datasets.forEach((ds, i) => {
+      const meta = c.getDatasetMeta(i);
+      if (meta.hidden) return;
+      const pts = meta.data.filter((p, k) => ds.data[k]?.y != null);
+      const p = pts[pts.length - 1];
+      if (p) items.push({ y: p.y, x: p.x, text: `${ds.label} ${ds.data[ds.data.length - 1].y.toFixed(0)}%`, color: ds.borderColor });
+    });
+    items.sort((a, b) => a.y - b.y);
+    for (let k = 1; k < items.length; k++) items[k].y = Math.max(items[k].y, items[k - 1].y + 15);
+    ctx.save(); ctx.font = "12px system-ui, -apple-system, sans-serif"; ctx.textBaseline = "middle";
+    items.forEach((it) => {
+      ctx.fillStyle = it.color; ctx.beginPath(); ctx.arc(it.x + 8, it.y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = css("--ink-2");
+      let t = it.text;
+      while (ctx.measureText(t).width > 134 && t.length > 4) t = t.slice(0, -5) + "…" + t.slice(-3);
+      ctx.fillText(t, it.x + 15, it.y);
+    });
+    ctx.restore();
+  },
+};
+
+function distKind(e) {
+  if (/# of seats/i.test(e.title)) return "seats";
+  if (/vote share/i.test(e.title)) return "share";
+  return "other";
+}
+
+function renderDists() {
+  const evs = state.events.filter((e) => e.kind === "buckets" && distKind(e) === state.dist);
+  if (!evs.length) { $("dists").innerHTML = `<div class="empty">No markets in this group.</div>`; return; }
+  $("dists").innerHTML = evs.map((e) => {
+    const top = lead(e);
+    const max = Math.max(...e.markets.map((m) => m.price), 0.01);
+    const name = shortTitle(e.title).replace(/\s*(# of seats|vote share)\s*$/i, "");
+    return `<div class="card mini" data-slug="${esc(e.slug)}" title="${esc(e.title)}">
+      <h3>${esc(name)}</h3>
+      <div class="meta">Most likely <b>${esc(top.label)}</b> (${pct(top.price)}) · ${money(e.volume)}</div>
+      <div class="cols">${e.markets.map((m) => `
+        <div class="c ${m === top ? "top" : ""}" title="${esc(m.label)}: ${pct(m.price)}">
+          <div class="n">${pct(m.price)}</div>
+          <div class="f" style="height:${(m.price / max) * 72}%"></div>
+        </div>`).join("")}</div>
+      <div class="ticks">${e.markets.map((m) => `<span>${esc(m.label)}</span>`).join("")}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderTable() {
+  const q = state.query.toLowerCase();
+  const rows = state.events
+    .filter((e) => !q || e.title.toLowerCase().includes(q) || e.markets.some((m) => m.label.toLowerCase().includes(q)))
+    .map((e) => { const m = lead(e); return { e, title: e.title, lead: outcomeName(m), price: m.price, change: m.change1d,
+      volume24h: e.volume24h, volume: e.volume, endDate: e.endDate || "" }; });
+  const { k, dir } = state.sort;
+  rows.sort((a, b) => (a[k] < b[k] ? -1 : a[k] > b[k] ? 1 : 0) * dir);
+  $("count").textContent = `· ${rows.length}`;
+  $("rows").innerHTML = rows.map((r) => `
+    <tr data-slug="${esc(r.e.slug)}">
+      <td class="title">${esc(r.title)}${r.e.closed ? '<span class="resolved">resolved</span>' : ""}</td>
+      <td>${esc(r.lead)}</td>
+      <td class="num">${pct(r.price)}</td>
+      <td class="num">${delta(r.change)}</td>
+      <td class="num">${money(r.volume24h)}</td>
+      <td class="num">${money(r.volume)}</td>
+      <td class="num">${date(r.endDate)}</td>
+    </tr>`).join("");
+  $("rows").closest("table").querySelectorAll("th").forEach((th) => {
+    th.textContent = th.textContent.replace(/ [↑↓]$/, "") + (th.dataset.k === k ? (dir > 0 ? " ↑" : " ↓") : "");
+  });
+}
+
+function feature(slug) {
+  state.featured = slug;
+  $("eventSelect").value = slug;
+  renderFeature();
+  window.scrollTo({ top: $("eventSelect").closest(".feature").offsetTop - 16, behavior: "smooth" });
+}
+
+const SHORT = {
+  "RZP-Zehut": "RZP-Z", "Otzma Yehudit": "Otzma", "United Torah Judaism": "UTJ", "Yisrael Beiteinu": "YB",
+  "Joint List": "JL", "The Democrats": "Dems", "Reservists–New Economic Party": "Res-NEP", "Amcha Yisrael": "Amcha",
+  "Haredi Public": "Haredi P.", "Blue and White": "B&W",
+};
+const polls = { data: null, mode: "avg", n: 10, with1424: false, weighting: "weighted" };
+const HALF_LIFE_DAYS = 7;
+const SAMPLE_CAP = 2000;
+
+// a poll's weight: halves every HALF_LIFE_DAYS before the newest poll, and grows with √sample, since
+// a poll's error shrinks with √n; the cap keeps one huge online panel from drowning out the rest
+function pollWeights(used) {
+  const w = new Map();
+  if (polls.weighting === "equal") { used.forEach((p) => w.set(p, 1)); return w; }
+  const known = polls.data.polls.map((p) => p.sample).filter(Boolean).sort((a, b) => a - b);
+  const median = known[Math.floor(known.length / 2)] || 1000;
+  const newest = Math.max(...used.map((p) => Date.parse(p.date)));
+  used.forEach((p) => {
+    const days = (newest - Date.parse(p.date)) / 86_400_000;
+    w.set(p, 0.5 ** (days / HALF_LIFE_DAYS) * Math.sqrt(Math.min(p.sample || median, SAMPLE_CAP)));
+  });
+  return w;
+}
+// null is "not polled" (N/A); a party with no column in the poll's table section had no list then: 0 seats
+const seatOf = (p, name) => (p.seats[name] === undefined ? 0 : p.seats[name]);
+const pollName = (p) => (p.publisher ? `${p.publisher} (${p.firm})` : `${p.firm} (unpublished)`);
+
+async function loadPolls() {
+  try {
+    const res = await fetch("polls.json");
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || res.statusText);
+    polls.data = body;
+    renderPolls();
+  } catch (err) {
+    $("pollMeta").textContent = `Could not load polls: ${err.message}`;
+  }
+}
+
+function pollsInView() {
+  const d = polls.data;
+  const pool = d.polls.filter((p) => polls.with1424 || !d.excludable.includes(p.publisher));
+  if (polls.mode === "latest") {
+    // polls are newest first, so the first one seen per outlet is its latest; unpublished polls are no outlet
+    const seen = new Set();
+    return pool.filter((p) => p.publisher && !seen.has(p.publisher) && seen.add(p.publisher));
+  }
+  return polls.n ? pool.slice(0, polls.n) : pool;
+}
+
+function renderPolls() {
+  const d = polls.data;
+  if (!d) return;
+  const used = pollsInView();
+  const usedSet = new Set(used);
+  const weights = pollWeights(used);
+  const weightSum = used.reduce((s, p) => s + weights.get(p), 0);
+  // a party missing from a poll ("–") is left out of its average rather than counted as 0
+  const parties = d.parties.map((pt) => {
+    const has = used.filter((p) => seatOf(p, pt.name) !== null);
+    const vals = has.map((p) => seatOf(p, pt.name));
+    const w = has.reduce((s, p) => s + weights.get(p), 0);
+    return { ...pt, vals, seats: w ? has.reduce((s, p) => s + weights.get(p) * seatOf(p, pt.name), 0) / w : 0 };
+  });
+  const shown = parties.filter((p) => p.vals.some((v) => v > 0)).sort((a, b) => b.seats - a.seats);
+  const out = parties.filter((p) => p.vals.length && !p.vals.some((v) => v > 0)).map((p) => p.name);
+  const blocs = d.blocs.map((name) => ({ name, seats: shown.filter((p) => p.bloc === name).reduce((s, p) => s + p.seats, 0) }));
+  const market = Object.fromEntries((state.projection?.parties || []).map((p) => [p.name, p.seats]));
+
+  const meta = [];
+  const weighted = polls.weighting === "weighted";
+  const how = weighted
+    ? `a poll's weight halves every ${HALF_LIFE_DAYS} days before the newest one and grows with the square root of its sample ` +
+      `(capped at ${SAMPLE_CAP.toLocaleString()}; an unreported sample counts as the median).`
+    : `a plain average, every poll counts once.`;
+  if (polls.mode === "latest") {
+    $("pollTitle").textContent = `${weighted ? "Weighted average" : "Average"} of the latest poll from each of ${used.length} outlets`;
+    meta.push(`${used.map((p) => `${p.publisher} ${p.fieldwork}`).join(", ")}; ${how}`);
+  } else {
+    $("pollTitle").textContent = `${weighted ? "Weighted average" : "Average"} of the last ${used.length} polls`;
+    meta.push(`Fieldwork ${used[used.length - 1].fieldwork} to ${used[0].fieldwork}; ${how}`);
+  }
+  if (!polls.with1424) {
+    const n = d.polls.filter((p) => d.excludable.includes(p.publisher)).length;
+    meta.push(`Channel 14 and i24 left out (${n} polls).`);
+  }
+  if (out.length) meta.push(`Below the threshold in every poll here: ${out.join(", ")}.`);
+  const total = shown.reduce((s, p) => s + p.seats, 0);
+  if (Math.abs(total - 120) >= 0.5) meta.push(`Adds up to ${total.toFixed(1)}, since some polls skipped a party.`);
+  $("pollMeta").textContent = meta.join(" ");
+
+  drawKnesset($("pollBar"), $("pollCols"), blocs, shown, { knesset: 120, majority: 61 }, (p) => {
+    const notes = [];
+    if (p.vals.length > 1) {
+      const lo = Math.min(...p.vals), hi = Math.max(...p.vals);
+      notes.push(lo === hi ? `${lo} in every poll` : `range ${lo}–${hi}`);
+      const zero = p.vals.filter((v) => v === 0).length;
+      if (zero) notes.push(`below threshold in ${zero} of ${p.vals.length}`);
+    }
+    if (market[p.name] != null) {
+      const diff = market[p.name] - p.seats;
+      notes.push(`Polymarket ${seats(market[p.name])} (${diff >= 0 ? "+" : "−"}${Math.abs(diff).toFixed(1)})`);
+    }
+    return { note: notes.join(" · "), tip: `${p.name}: ${p.vals.join(", ")}` };
+  });
+
+  const cols = d.parties.filter((pt) => d.polls.some((p) => p.seats[pt.name] > 0));
+  const blocTotal = (p, bloc) => d.parties.filter((pt) => pt.bloc === bloc).reduce((s, pt) => s + (p.seats[pt.name] || 0), 0);
+  $("pollTable").innerHTML = `<thead><tr><th>Fieldwork</th><th>Publisher (pollster)</th><th class="num">Sample</th>
+      ${cols.map((c) => `<th class="num" title="${esc(c.name)}">${esc(SHORT[c.name] || c.name)}</th>`).join("")}
+      <th class="num">Netanyahu bloc</th><th class="num">Opposition</th><th class="num">Weight</th></tr></thead><tbody>` +
+    d.polls.map((p) => {
+      const cls = usedSet.has(p) ? "used" : !polls.with1424 && d.excludable.includes(p.publisher) ? "dim" : "";
+      const name = p.source
+        ? `<a href="${esc(p.source)}" target="_blank" rel="noopener" title="Not on Wikipedia yet; from this news report">${esc(pollName(p))}</a> *`
+        : esc(pollName(p));
+      return `<tr class="${cls}"><td>${esc(p.fieldwork)}</td><td>${name}</td>
+        <td class="num">${p.sample ? p.sample.toLocaleString() : "–"}</td>
+        ${cols.map((c) => {
+          const v = seatOf(p, c.name);
+          return `<td class="num">${v == null ? "–" : v === 0 ? '<span title="polled below the threshold">0</span>' : v}</td>`;
+        }).join("")}
+        <td class="num">${blocTotal(p, d.blocs[0])}</td><td class="num">${blocTotal(p, d.blocs[1])}</td>
+        <td class="num">${usedSet.has(p) ? pct(weights.get(p) / weightSum) : ""}</td></tr>`;
+    }).join("") + "</tbody>";
+  $("pollCount").textContent = `· ${d.polls.length}, marked rows are in the view above`;
+  $("pollSource").innerHTML = `0 = polled below the threshold, – = not polled. Source: <a href="${esc(d.source)}" target="_blank" rel="noopener">Wikipedia</a>, ` +
+    `read ${new Date(d.fetchedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}; * = a final poll Wikipedia had not listed yet, ` +
+    `taken from the linked news report. Blocs as Polymarket defines them.`;
+}
+
+function showTab(tab) {
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  $("tab-markets").hidden = tab !== "markets";
+  $("tab-polls").hidden = tab !== "polls";
+  history.replaceState(null, "", tab === "polls" ? "#polls" : location.pathname);
+  // bar labels are measured for collisions, which only works once the tab is visible
+  if (tab === "polls") renderPolls(); else { renderProjection(); renderFeature(); }
+}
+
+function schedule() {
+  clearInterval(timer);
+  if ($("auto").checked) timer = setInterval(load, REFRESH_MS);
+}
+
+$("eventSelect").addEventListener("change", (ev) => { state.featured = ev.target.value; renderFeature(); });
+$("bars").addEventListener("click", (ev) => {
+  const row = ev.target.closest(".bar-row"); if (!row) return;
+  const e = eventBySlug(state.featured), ids = state.selected[e.slug], id = row.dataset.id;
+  if (ids.includes(id)) { if (ids.length > 1) ids.splice(ids.indexOf(id), 1); }
+  else { if (ids.length >= MAX_LINES) ids.shift(); ids.push(id); }
+  renderFeature();
+});
+$("ranges").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button"); if (!b) return;
+  state.range = b.dataset.r;
+  $("ranges").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  renderChart(eventBySlug(state.featured));
+});
+$("distChips").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button"); if (!b) return;
+  state.dist = b.dataset.f;
+  $("distChips").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  renderDists();
+});
+for (const id of ["tiles", "dists", "rows", "blocCols"]) {
+  $(id).addEventListener("click", (ev) => { const el = ev.target.closest("[data-slug]"); if (el) feature(el.dataset.slug); });
+}
+document.querySelector("thead").addEventListener("click", (ev) => {
+  const k = ev.target.closest("th")?.dataset.k; if (!k) return;
+  state.sort = { k, dir: state.sort.k === k ? -state.sort.dir : (k === "title" || k === "lead" || k === "endDate" ? 1 : -1) };
+  renderTable();
+});
+$("search").addEventListener("input", (ev) => { state.query = ev.target.value; renderTable(); });
+$("refresh").addEventListener("click", load);
+document.querySelector(".tabs").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) showTab(b.dataset.tab); });
+$("pollMode").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button"); if (!b) return;
+  polls.mode = b.dataset.m;
+  $("pollMode").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  $("pollNWrap").hidden = polls.mode === "latest";
+  renderPolls();
+});
+$("pollWeight").addEventListener("change", (ev) => { polls.weighting = ev.target.value; renderPolls(); });
+$("pollN").addEventListener("change", (ev) => { polls.n = Number(ev.target.value); renderPolls(); });
+$("poll1424").addEventListener("change", (ev) => { polls.with1424 = ev.target.checked; renderPolls(); });
+$("showClosed").addEventListener("change", load);
+$("auto").addEventListener("change", schedule);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderProjection(); renderFeature(); });
+
+load();
+loadPolls();
+schedule();
+if (location.hash === "#polls") showTab("polls");
+</script>
+</body>
+</html>
