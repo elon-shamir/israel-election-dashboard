@@ -124,6 +124,9 @@ button:hover { background: var(--wash); }
 .prow .track { grid-column: 1 / 3; height: 6px; background: var(--bar-track); border-radius: 3px; overflow: hidden; }
 .prow .fill { display: block; height: 100%; border-radius: 0 3px 3px 0; }
 .prow .note { grid-column: 1 / 3; color: var(--muted); font-size: 12px; }
+.proj-hist { margin-top: 28px; border-top: 1px solid var(--grid); padding-top: 16px; }
+.proj-hist h3 { font-size: 14px; margin: 0; }
+.hist-box { height: 300px; }
 .odds { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--ink-2); font-size: 13px; }
 .odds b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .tabs { display: flex; gap: 4px; margin: -4px 0 20px; border-bottom: 1px solid var(--grid); }
@@ -183,6 +186,19 @@ a { color: inherit; }
     </div>
     <div class="blocbar" id="blocbar" role="img"></div>
     <div class="bloc-cols" id="blocCols"></div>
+    <div class="proj-hist">
+      <div class="feature-head">
+        <h3>Over time</h3>
+        <div class="controls">
+          <select id="histWhat" aria-label="What to chart"><option value="">Netanyahu vs opposition</option></select>
+          <div class="ranges" id="histRanges">
+            <button data-d="7">1W</button><button data-d="14">2W</button><button data-d="0" aria-pressed="true">All</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-box hist-box"><canvas id="histChart" role="img" aria-label="Projected seats over time"></canvas></div>
+      <div class="hint" id="histNote">Loading price history…</div>
+    </div>
   </section>
 
   <section class="feature">
@@ -341,6 +357,7 @@ async function load() {
     state.events = body.events;
     state.projection = body.projection;
     state.fetchedAt = new Date(body.fetchedAt);
+    loadHistory();
     $("error").hidden = true;
     $("status").innerHTML = `<span class="dot"></span>Updated ${state.fetchedAt.toLocaleTimeString()}`;
     render();
@@ -354,6 +371,7 @@ async function load() {
 function render() {
   renderTiles();
   renderProjection();
+  renderHistory();
   renderSelect();
   renderFeature();
   renderDists();
@@ -583,7 +601,7 @@ const endLabels = {
       if (meta.hidden) return;
       const pts = meta.data.filter((p, k) => ds.data[k]?.y != null);
       const p = pts[pts.length - 1];
-      if (p) items.push({ y: p.y, x: p.x, text: `${ds.label} ${ds.data[ds.data.length - 1].y.toFixed(0)}%`, color: ds.borderColor });
+      if (p) items.push({ y: p.y, x: p.x, text: `${ds.label} ${ds.fmt ? ds.fmt(ds.data[ds.data.length - 1].y) : ds.data[ds.data.length - 1].y.toFixed(0) + "%"}`, color: ds.borderColor });
     });
     items.sort((a, b) => a.y - b.y);
     for (let k = 1; k < items.length; k++) items[k].y = Math.max(items[k].y, items[k - 1].y + 15);
@@ -598,6 +616,109 @@ const endLabels = {
     ctx.restore();
   },
 };
+
+const hist = { data: null, loading: false, days: 0, what: "" };
+let histChart;
+
+async function loadHistory() {
+  if (hist.loading || hist.data) return;
+  hist.loading = true;
+  try {
+    hist.data = await projectionHistory(state.events.filter((e) => !e.closed));
+    renderHistory();
+  } catch (err) {
+    $("histNote").textContent = `Could not load price history: ${err.message}`;
+  } finally {
+    hist.loading = false;
+  }
+}
+
+// a dashed line at 61, so a bloc crossing it reads as a majority
+const majorityLine = {
+  id: "majorityLine",
+  afterDatasetsDraw(c) {
+    if (!c.options.plugins.majorityLine?.show) return;
+    const y = c.scales.y.getPixelForValue(61), { left, right } = c.chartArea, ctx = c.ctx;
+    ctx.save(); ctx.strokeStyle = css("--ink-2"); ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = css("--ink-2"); ctx.font = "11px system-ui, -apple-system, sans-serif";
+    ctx.fillText("61 majority", left + 4, y - 5); ctx.restore();
+  },
+};
+
+function renderHistory() {
+  const h = hist.data, pr = state.projection;
+  if (!h || !pr || $("tab-markets").hidden) return;
+  const sel = $("histWhat");
+  if (sel.options.length === 1) {
+    sel.insertAdjacentHTML("beforeend", `<option value="${esc(pr.blocs[2].name)}">${esc(pr.blocs[2].name)}</option>` +
+      pr.parties.map((p) => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join(""));
+    sel.value = hist.what;
+  }
+  // the newest point is the live projection, so the line ends where the bars above stand
+  let points = [...h.points, {
+    t: Date.now() / 1000,
+    blocs: Object.fromEntries(pr.blocs.map((b) => [b.name, b.seats])),
+    parties: Object.fromEntries(pr.parties.map((p) => [p.name, p.seats])),
+  }];
+  if (hist.days) points = points.filter((p) => p.t >= Date.now() / 1000 - hist.days * 86400);
+
+  const fmt = (v) => v.toFixed(1);
+  const line = (label, color, get) => ({
+    label, fmt, borderColor: color, backgroundColor: color, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4,
+    pointHoverBorderWidth: 2, pointHoverBorderColor: css("--surface"), tension: 0, spanGaps: true,
+    data: points.map((p) => ({ x: p.t * 1000, y: get(p) ?? null })),
+  });
+  const party = pr.parties.find((p) => p.name === hist.what);
+  const bloc = pr.blocs.find((b) => b.name === hist.what);
+  const single = party || bloc;
+  const datasets = party ? [line(party.name, blocColor(party.bloc), (p) => p.parties[party.name])]
+    : bloc ? [line(bloc.name, blocColor(bloc.name), (p) => p.blocs[bloc.name])]
+    : pr.blocs.slice(0, 2).map((b) => line(b.name.replace(" bloc", ""), blocColor(b.name), (p) => p.blocs[b.name]));
+
+  const spanDays = (points[points.length - 1].t - points[0].t) / 86400;
+  const muted = css("--muted");
+  if (histChart) histChart.destroy();
+  histChart = new Chart($("histChart"), {
+    type: "line",
+    data: { datasets },
+    options: {
+      maintainAspectRatio: false, animation: false, parsing: false, normalized: true,
+      layout: { padding: { right: 150, top: 6 } },
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: { type: "linear", min: points[0].t * 1000, max: points[points.length - 1].t * 1000,
+          grid: { display: false }, border: { color: css("--axis") },
+          ticks: { color: muted, maxTicksLimit: 7, maxRotation: 0,
+            callback: (v) => new Date(v).toLocaleString(undefined, spanDays <= 2 ? { hour: "numeric" } : { month: "short", day: "numeric" }) } },
+        // the two-bloc view keeps the 61 line in frame; a single series scales to its own range
+        y: { suggestedMax: single ? undefined : 62, grace: "10%", grid: { color: css("--grid") }, border: { display: false },
+          ticks: { color: muted, maxTicksLimit: 6 } },
+      },
+      plugins: {
+        majorityLine: { show: !single },
+        legend: { position: "top", align: "start",
+          labels: { color: css("--ink-2"), usePointStyle: true, pointStyle: "line", boxWidth: 18, font: { size: 12 } } },
+        tooltip: {
+          backgroundColor: css("--surface"), titleColor: css("--ink"), bodyColor: css("--ink-2"),
+          borderColor: css("--border"), borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
+          itemSort: (a, b) => b.parsed.y - a.parsed.y,
+          callbacks: {
+            title: (items) => new Date(items[0].parsed.x).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+            label: (c) => ` ${c.dataset.label}: ${c.parsed.y == null ? "–" : c.parsed.y.toFixed(1)} seats`,
+          },
+        },
+      },
+    },
+    plugins: [crosshair, endLabels, majorityLine],
+  });
+
+  const firstBelow = h.points.find((p) => p.belowKnown);
+  $("histNote").textContent = `The same projection recomputed every 4 hours from each market's price history, since ` +
+    `${date(new Date(h.start * 1000).toISOString())}, when every party first had a market. Polymarket publishes no history of ` +
+    `liquidity or spreads, so the blend and the fit to 120 use today's liquidity throughout` +
+    (firstBelow ? `; before ${date(new Date(firstBelow.t * 1000).toISOString())} the wasted vote is taken as 5%, as there was no market for it.` : ".");
+}
 
 function distKind(e) {
   if (/# of seats/i.test(e.title)) return "seats";
@@ -793,7 +914,7 @@ function showTab(tab) {
   $("tab-polls").hidden = tab !== "polls";
   history.replaceState(null, "", tab === "polls" ? "#polls" : location.pathname);
   // bar labels are measured for collisions, which only works once the tab is visible
-  if (tab === "polls") renderPolls(); else { renderProjection(); renderFeature(); }
+  if (tab === "polls") renderPolls(); else { renderProjection(); renderHistory(); renderFeature(); }
 }
 
 function schedule() {
@@ -844,7 +965,14 @@ $("pollN").addEventListener("change", (ev) => { polls.n = Number(ev.target.value
 $("poll1424").addEventListener("change", (ev) => { polls.with1424 = ev.target.checked; renderPolls(); });
 $("showClosed").addEventListener("change", load);
 $("auto").addEventListener("change", schedule);
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderProjection(); renderFeature(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderProjection(); renderHistory(); renderFeature(); });
+$("histWhat").addEventListener("change", (ev) => { hist.what = ev.target.value; renderHistory(); });
+$("histRanges").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button"); if (!b) return;
+  hist.days = Number(b.dataset.d);
+  $("histRanges").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  renderHistory();
+});
 
 load();
 loadPolls();

@@ -20,7 +20,11 @@ python3 polymarket.py --out data/snapshot.json --closed --history 1w   # optiona
   The markets' total is fitted to 120 by moving thin markets most (correction proportional to
   seats / liquidity). A party is flagged low-confidence when over half its odds rest on last-trade
   prices. Blocs follow Polymarket's own definitions.
-- `index.html`, Polymarket tab: headline tiles, the projected Knesset by bloc, any market's outcomes
+- Projection history (`projectionHistory` in `polymarket.js`): `projectSeats` rerun every 4 hours on
+  each bracket's CLOB price history, from when every party first had a market. Liquidity and spread
+  history are not published, so weights use today's liquidity; before the wasted-vote market opened the
+  default 5% applies.
+- `index.html`, Polymarket tab: headline tiles, the projected Knesset by bloc with its history, any market's outcomes
   with a history chart, seat and vote-share distributions, and a sortable table of all markets.
   Refreshes every 30 seconds.
 - `index.html`, Polls tab (`#polls`): an average of the last N polls or of the latest poll from each

@@ -261,3 +261,68 @@ function projectSeats(events) {
     markets: { netanyahuBlocBigger: bigger, anyBlocMajority: majority },
   };
 }
+
+// run fn over items with at most `limit` requests in flight
+async function mapLimit(items, limit, fn) {
+  const out = [];
+  let next = 0;
+  await Promise.all(Array.from({ length: limit }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  }));
+  return out;
+}
+
+const HISTORY_STEP_MIN = 240;
+
+// The projection recomputed every 4 hours from each bracket's price history, with projectSeats itself.
+// Polymarket publishes no history of liquidity or spreads, so the blend and the fit to 120 use today's
+// liquidity throughout. A market counts from when all its brackets have a price; the series starts once
+// every party has at least one, so no party drops out and hands its seats to the rest.
+async function projectionHistory(events) {
+  const used = events.filter((e) => e.kind === "buckets" &&
+    (SEATS_RE.test(e.title) || SHARE_RE.test(e.title) || e.title.toLowerCase().includes("below threshold")));
+  const tokens = used.flatMap((e) => e.markets.map((m) => m.tokenYes));
+  const series = new Map(await mapLimit(tokens, 8, async (token) => {
+    const data = await getJson(`${CLOB}/prices-history`, { market: token, interval: "max", fidelity: HISTORY_STEP_MIN })
+      .catch(() => ({ history: [] }));
+    return [token, (data.history || []).map((p) => ({ t: Number(p.t), p: Number(p.p) })).sort((a, b) => a.t - b.t)];
+  }));
+
+  const opens = new Map(used.map((e) => [e, Math.max(...e.markets.map((m) => series.get(m.tokenYes)[0]?.t ?? Infinity))]));
+  const canon = (name) => ALIASES[name.trim()] || name.trim();
+  const partyOpens = {};
+  for (const e of used) {
+    const m = SEATS_RE.exec(e.title) || SHARE_RE.exec(e.title);
+    if (m) partyOpens[canon(m[1])] = Math.min(partyOpens[canon(m[1])] ?? Infinity, opens.get(e));
+  }
+  const start = Math.max(...Object.values(partyOpens));
+  if (!Number.isFinite(start)) return { start: null, points: [] };
+
+  const step = HISTORY_STEP_MIN * 60, now = Date.now() / 1000;
+  const cursor = new Map(tokens.map((t) => [t, { i: 0, p: null }]));
+  const priceAt = (token, t) => {
+    const h = series.get(token), c = cursor.get(token);
+    while (c.i < h.length && h[c.i].t <= t) c.p = h[c.i++].p;
+    return c.p;
+  };
+  const points = [];
+  for (let t = Math.ceil(start / step) * step; t <= now; t += step) {
+    const snapshot = used.filter((e) => opens.get(e) <= t).map((e) => ({
+      ...e, markets: e.markets.map((m) => ({ ...m, price: priceAt(m.tokenYes, t) })),
+    }));
+    // advance every cursor, so markets that open later are positioned when they join
+    tokens.forEach((token) => priceAt(token, t));
+    const pr = projectSeats(snapshot);
+    if (!pr) continue;
+    points.push({
+      t,
+      blocs: Object.fromEntries(pr.blocs.map((b) => [b.name, b.seats])),
+      parties: Object.fromEntries(pr.parties.map((p) => [p.name, p.seats])),
+      belowKnown: snapshot.some((e) => e.title.toLowerCase().includes("below threshold")),
+    });
+  }
+  return { start, points };
+}
