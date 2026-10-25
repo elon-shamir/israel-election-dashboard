@@ -33,10 +33,18 @@ NAMES = {
     "Reserv.-NEP": "Reservists–New Economic Party",
 }
 NOT_PARTIES = {"Fieldwork date", "Polling firm", "Publisher", "Sample size", "Others", "Gov."}
-# final polls published Friday 23 Oct that Wikipedia had not listed when this ran; a party not named
+# final polls published 22-23 Oct that Wikipedia had not listed when this ran; a party not named
 # in the report is left out (None), one reported below the threshold is 0
 _FINAL_ZERO = {"Reservists–New Economic Party": 0, "Amcha Yisrael": 0, "Haredi Public": 0}
 SUPPLEMENT = [
+    {
+        # the article's own bloc line (opposition 52, coalition 50) does not follow from these party figures
+        "date": "2026-10-22", "fieldwork": "22 Oct", "firm": "Maagar Mochot", "publisher": "Channel 16", "sample": None,
+        "seats": {"Yashar": 20, "Likud": 17, "Together": 14, "The Democrats": 9, "Otzma Yehudit": 9, "Joint List": 9,
+                  "United Torah Judaism": 8, "Yisrael Beiteinu": 7, "Shas": 7, "RZP-Zehut": 7, "Ra'am": 5,
+                  "Reservists–New Economic Party": 4, "Amcha Yisrael": 4, "Haredi Public": None},
+        "source": "https://www.ice.co.il/research/news/article/1134767",
+    },
     {
         "date": "2026-10-23", "fieldwork": "22–23 Oct", "firm": "Midgam R&C", "publisher": "HaHadashot 12", "sample": 1018,
         "seats": {"Yashar": 23, "Likud": 21, "Together": 15, "The Democrats": 10, "Joint List": 9, "Shas": 8,
@@ -58,6 +66,9 @@ SUPPLEMENT = [
         "source": "https://www.timesofisrael.com/final-polls-before-election-show-both-blocs-short-of-majority-small-parties-out-of-knesset/",
     },
 ]
+
+# samples Wikipedia leaves blank, filled only while it still does: (publisher, date) -> respondents
+SAMPLE_FIXES = {("Israel Hayom", "2026-10-22"): 1110}
 
 MONTHS = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
 
@@ -217,6 +228,10 @@ def parse(wikitext):
                 "sample": int(sample) if sample else None,
                 "seats": seats,
             })
+
+    for poll in polls:
+        if poll["sample"] is None:
+            poll["sample"] = SAMPLE_FIXES.get((poll["publisher"], poll["date"]))
 
     # a supplement row is dropped once Wikipedia lists the same outlet's poll for that date
     listed = {(p["publisher"], p["date"]) for p in polls}

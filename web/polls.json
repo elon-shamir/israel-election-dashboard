@@ -69,51 +69,49 @@
  "polls": [
   {
    "date": "2026-10-23",
+   "fieldwork": "23 Oct",
+   "firm": "MP+TM+SN+A",
+   "publisher": "Channel 13",
+   "sample": 1875,
+   "seats": {
+    "Likud": 19,
+    "Together": 14,
+    "RZP-Zehut": 8,
+    "Otzma Yehudit": 8,
+    "Shas": 7,
+    "United Torah Judaism": 8,
+    "Yisrael Beiteinu": 8,
+    "Ra'am": 7,
+    "Joint List": 9,
+    "The Democrats": 10,
+    "Yashar": 22,
+    "Reservists–New Economic Party": 0,
+    "Amcha Yisrael": 0,
+    "Haredi Public": 0
+   }
+  },
+  {
+   "date": "2026-10-23",
    "fieldwork": "22–23 Oct",
    "firm": "Midgam R&C",
    "publisher": "HaHadashot 12",
    "sample": 1018,
    "seats": {
-    "Yashar": 23,
     "Likud": 21,
     "Together": 15,
-    "The Democrats": 10,
-    "Joint List": 9,
-    "Shas": 8,
-    "Yisrael Beiteinu": 8,
-    "Otzma Yehudit": 8,
-    "United Torah Judaism": 7,
     "RZP-Zehut": 6,
-    "Ra'am": 5,
-    "Reservists–New Economic Party": 0,
-    "Amcha Yisrael": 0,
-    "Haredi Public": 0
-   },
-   "source": "https://www.mako.co.il/news-israel-elections/2026/Article-8ea5e45ec2961a1027.htm"
-  },
-  {
-   "date": "2026-10-23",
-   "fieldwork": "23 Oct",
-   "firm": "The Madad",
-   "publisher": "Channel 13",
-   "sample": 1875,
-   "seats": {
-    "Yashar": 22,
-    "Likud": 19,
-    "Together": 14,
-    "The Democrats": 10,
-    "Joint List": 9,
-    "Yisrael Beiteinu": 8,
     "Otzma Yehudit": 8,
-    "United Torah Judaism": 8,
-    "RZP-Zehut": 8,
-    "Shas": 7,
-    "Ra'am": 7,
+    "Shas": 8,
+    "United Torah Judaism": 7,
+    "Yisrael Beiteinu": 8,
+    "Ra'am": 5,
+    "Joint List": 9,
+    "The Democrats": 10,
+    "Yashar": 23,
     "Reservists–New Economic Party": 0,
     "Amcha Yisrael": 0,
     "Haredi Public": 0
-   },
-   "source": "https://www.timesofisrael.com/final-polls-before-election-show-both-blocs-short-of-majority-small-parties-out-of-knesset/"
+   }
   },
   {
    "date": "2026-10-23",
@@ -144,7 +142,7 @@
    "fieldwork": "22 Oct",
    "firm": "Kantar",
    "publisher": "Israel Hayom",
-   "sample": null,
+   "sample": 1110,
    "seats": {
     "Likud": 21,
     "Together": 14,
@@ -230,6 +228,30 @@
     "Amcha Yisrael": 0,
     "Haredi Public": 0
    }
+  },
+  {
+   "date": "2026-10-22",
+   "fieldwork": "22 Oct",
+   "firm": "Maagar Mochot",
+   "publisher": "Channel 16",
+   "sample": null,
+   "seats": {
+    "Yashar": 20,
+    "Likud": 17,
+    "Together": 14,
+    "The Democrats": 9,
+    "Otzma Yehudit": 9,
+    "Joint List": 9,
+    "United Torah Judaism": 8,
+    "Yisrael Beiteinu": 7,
+    "Shas": 7,
+    "RZP-Zehut": 7,
+    "Ra'am": 5,
+    "Reservists–New Economic Party": 4,
+    "Amcha Yisrael": 4,
+    "Haredi Public": null
+   },
+   "source": "https://www.ice.co.il/research/news/article/1134767"
   },
   {
    "date": "2026-10-21",
@@ -1879,8 +1901,8 @@
    }
   }
  ],
- "source": "https://en.wikipedia.org/w/index.php?title=Opinion_polling_for_the_2026_Israeli_legislative_election&oldid=1381732869",
- "fetchedAt": "2026-10-25T09:28:05+00:00",
+ "source": "https://en.wikipedia.org/w/index.php?title=Opinion_polling_for_the_2026_Israeli_legislative_election&oldid=1381883425",
+ "fetchedAt": "2026-10-25T14:01:34+00:00",
  "excludable": [
   "Channel 14",
   "i24 News"
