@@ -236,7 +236,10 @@ a { color: inherit; }
 
   <div class="section-head">
     <h2>All markets <span class="meta" id="count"></span></h2>
-    <input type="search" id="search" placeholder="Filter markets…" aria-label="Filter markets">
+    <div class="controls">
+      <input type="search" id="search" placeholder="Filter markets…" aria-label="Filter markets">
+      <button id="csv" title="Every outcome of every market loaded now, one row each">Download CSV</button>
+    </div>
   </div>
   <section class="card table-wrap">
     <table>
@@ -971,6 +974,33 @@ document.querySelector("thead").addEventListener("click", (ev) => {
   state.sort = { k, dir: state.sort.k === k ? -state.sort.dir : (k === "title" || k === "lead" || k === "endDate" ? 1 : -1) };
   renderTable();
 });
+// one row per outcome of every loaded event (resolved ones too when "Include resolved" is on)
+function downloadCsv() {
+  const cols = [
+    ["event", (e) => e.title], ["event_slug", (e) => e.slug], ["event_url", (e) => e.url], ["event_kind", (e) => e.kind],
+    ["event_end_date", (e) => e.endDate], ["event_closed", (e) => e.closed], ["event_volume", (e) => e.volume],
+    ["event_volume_24h", (e) => e.volume24h], ["event_liquidity", (e) => e.liquidity],
+    ["outcome", (e, m) => outcomeName(m)], ["question", (e, m) => m.question], ["market_id", (e, m) => m.id],
+    ["market_slug", (e, m) => m.slug], ["probability", (e, m) => m.price], ["best_bid", (e, m) => m.bestBid],
+    ["best_ask", (e, m) => m.bestAsk], ["last_trade", (e, m) => m.lastTrade], ["change_1d", (e, m) => m.change1d],
+    ["change_1w", (e, m) => m.change1w], ["volume", (e, m) => m.volume], ["volume_24h", (e, m) => m.volume24h],
+    ["liquidity", (e, m) => m.liquidity], ["bracket_threshold", (e, m) => m.threshold], ["closed", (e, m) => m.closed],
+    ["end_date", (e, m) => m.endDate], ["yes_token_id", (e, m) => m.tokenYes], ["fetched_at", () => state.fetchedAt.toISOString()],
+  ];
+  const cell = (v) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const rows = state.events.flatMap((e) => e.markets.map((m) => cols.map(([, get]) => cell(get(e, m))).join(",")));
+  const csv = "\ufeff" + [cols.map(([name]) => name).join(","), ...rows].join("\r\n");  // BOM so Excel reads UTF-8
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `polymarket-israel-election-${state.fetchedAt.toISOString().slice(0, 16).replace(/[-:T]/g, "")}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+$("csv").addEventListener("click", () => { if (state.events.length) downloadCsv(); });
 $("search").addEventListener("input", (ev) => { state.query = ev.target.value; renderTable(); });
 $("refresh").addEventListener("click", load);
 document.querySelector(".tabs").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) showTab(b.dataset.tab); });

@@ -26,8 +26,9 @@ python3 polymarket.py --out data/snapshot.json --closed --history 1w   # optiona
   history are not published, so weights use today's liquidity; before the wasted-vote market opened the
   default 5% applies.
 - `index.html`, Polymarket tab: headline tiles, the projected Knesset by bloc with its history, any market's outcomes
-  with a history chart, seat and vote-share distributions, and a sortable table of all markets.
-  Refreshes every 30 seconds.
+  with a history chart, seat and vote-share distributions, and a sortable table of all markets with a
+  Download CSV button (one row per outcome: prices, bid/ask, last trade, changes, volume, liquidity,
+  dates, token id). Refreshes every 30 seconds.
 - `index.html`, Polls tab (`#polls`): an average of the last N polls or of the latest poll from each
   outlet, weighted by default (recency with a 7-day half-life, and √sample capped at 2,000) or equal,
   without Channel 14 and i24 News by default, by bloc and party next to the Polymarket projection,
